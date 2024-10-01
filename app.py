@@ -75,3 +75,4 @@ if picture:
         # Agrupar los datos por la columna "Categoría" y sumar las cantidades
         df_sum = data2.groupby('Categoría')['Cantidad'].sum().reset_index()
         st.write(df_sum)
+
