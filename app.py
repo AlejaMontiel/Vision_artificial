@@ -3,68 +3,66 @@ import yolov5
 import streamlit as st
 import numpy as np
 import pandas as pd
-#from ultralytics import YOLO
 
-#import sys
-#sys.path.append('./ultralytics/yolo')
-
-#from utils.checks import check_requirements
-
-
-# load pretrained model
+# Cargar el modelo YOLOv5 preentrenado
 model = yolov5.load('yolov5s.pt')
-#model = yolov5.load('yolov5nu.pt')
 
-# set model parameters
-model.conf = 0.25  # NMS confidence threshold
-model.iou = 0.45  # NMS IoU threshold
-model.agnostic = False  # NMS class-agnostic
-model.multi_label = False  # NMS multiple labels per box
-model.max_det = 1000  # maximum number of detections per image
+# Parámetros del modelo
+model.conf = 0.25  # Umbral de confianza
+model.iou = 0.45  # Umbral de IoU
+model.agnostic = False  # Clases agnósticas
+model.multi_label = False  # Etiquetas múltiples por caja
+model.max_det = 1000  # Máximo de detecciones por imagen
 
-# take a picture with the camera
-st.title("Detección de Objetos en Imágenes")
+# Título de la aplicación
+st.title("🔍 Detección de Objetos en Imágenes")
 
+# Barra lateral para configuraciones
 with st.sidebar:
-            st.subheader('Parámetros de Configuración')
-            model.iou= st.slider('Seleccione el IoU',0.0, 1.0)
-            st.write('IOU:', model.iou)
+    st.subheader('⚙️ Parámetros de Configuración')
+    
+    # Ajustar IoU
+    model.iou = st.slider('Seleccione el IoU', 0.0, 1.0, model.iou)
+    st.write(f'**IoU seleccionado:** {model.iou}')
+    
+    # Ajustar confianza
+    model.conf = st.slider('Seleccione el Umbral de Confianza', 0.0, 1.0, model.conf)
+    st.write(f'**Confianza seleccionada:** {model.conf}')
 
-with st.sidebar:
-            model.conf = st.slider('Seleccione el Confidence',0.0, 1.0)
-            st.write('Conf:', model.conf)
-
-
-picture = st.camera_input("Capturar foto",label_visibility='visible' )
+# Capturar imagen desde la cámara
+picture = st.camera_input("📸 Captura una imagen")
 
 if picture:
-    #st.image(picture)
-
+    # Convertir la imagen capturada en formato OpenCV
     bytes_data = picture.getvalue()
     cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
   
-    # perform inference
+    # Realizar la inferencia con el modelo
     results = model(cv2_img)
 
-    # parse results
+    # Extraer las predicciones
     predictions = results.pred[0]
-    boxes = predictions[:, :4] 
-    scores = predictions[:, 4]
-    categories = predictions[:, 5]
+    boxes = predictions[:, :4]  # Coordenadas de las cajas de detección
+    scores = predictions[:, 4]  # Confianza de detección
+    categories = predictions[:, 5]  # Clases detectadas
 
+    # Layout de columnas para mostrar resultados
     col1, col2 = st.columns(2)
 
     with col1:
-        # show detection bounding boxes on image
+        st.subheader("📷 Imagen con Detecciones")
+        # Renderizar las detecciones sobre la imagen
         results.render()
-        # show image with detections 
-        st.image(cv2_img, channels = 'BGR')
+        # Mostrar la imagen con las cajas de detección
+        st.image(cv2_img, channels='BGR')
 
-    with col2:      
-
-        # get label names
+    with col2:
+        st.subheader("📊 Resultados de la Detección")
+        
+        # Obtener los nombres de las etiquetas
         label_names = model.names
-        # count categories
+        
+        # Contar las categorías detectadas
         category_count = {}
         for category in categories:
             if category in category_count:
@@ -72,13 +70,18 @@ if picture:
             else:
                 category_count[category] = 1        
 
+        # Crear una lista para almacenar los resultados
         data = []        
-        # print category counts and labels
         for category, count in category_count.items():
-            label = label_names[int(category)]            
-            data.append({"Categoría":label,"Cantidad":count})
-        data2 =pd.DataFrame(data)
+            label = label_names[int(category)]
+            data.append({"Categoría": label, "Cantidad": count})
         
-        # agrupar los datos por la columna "categoria" y sumar las cantidades
-        df_sum = data2.groupby('Categoría')['Cantidad'].sum().reset_index() 
-        df_sum
+        # Convertir los resultados en un DataFrame de pandas
+        data_df = pd.DataFrame(data)
+        
+        # Agrupar las categorías y sumar las cantidades
+        df_sum = data_df.groupby('Categoría')['Cantidad'].sum().reset_index()
+        
+        # Mostrar los resultados en una tabla
+        st.dataframe(df_sum)
+
